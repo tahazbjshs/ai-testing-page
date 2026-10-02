@@ -3,23 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>طه احمد</title>
+    <title>لعبة الثعبان الكلاسيكية - طه أحمد</title>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
-            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Tahoma', Arial, sans-serif;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f4f4f9;
+            min-height: 100vh;
+        }
+        .container {
+            text-align: center;
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
         }
         h1 {
-            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+            color: #4CAF50;
+        }
+        .score-board {
+            font-size: 20px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        canvas {
+            border: 4px solid #4CAF50;
+            background-color: #000;
+            display: block;
+            margin: 0 auto 15px auto;
+            border-radius: 4px;
+        }
+        .controls-hint {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
-    <h1>طه احمد افضل مبرمج باستخدام الذكاء الاصطناعي</h1>
+
+    <div class="container">
+        <h1>لعبة الثعبان الكلاسيكية</h1>
+        <div class="score-board">النقاط: <span id="score">0</span></div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <button id="startBtn" onclick="startGame()">ابدأ / إعادة اللعب</button>
+        <div class="controls-hint">استخدم مفاتيح الأسهم في لوحة المفاتيح للتحكم</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake = [];
+        let food = { x: 5, y: 5 };
+        let dx = 0;
+        let dy = 0;
+        let score = 0;
+        let gameInterval = null;
+        let isGameRunning = false;
+
+        function startGame() {
+            // إعادة ضبط اللعبة
+            snake = [
+                { x: 10, y: 10 },
+                { x: 9, y: 10 },
+                { x: 8, y: 10 }
+            ];
+            dx = 1;
+            dy = 0;
+            score = 0;
+            scoreElement.innerText = score;
+            createFood();
+            
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 100);
+            isGameRunning = true;
+        }
+
+        function gameLoop() {
+            update();
+            if (checkGameOver()) {
+                clearInterval(gameInterval);
+                isGameRunning = false;
+                alert("انتهت اللعبة! مجموع نقاطك: " + score);
+                return;
+            }
+            draw();
+        }
+
+        function update() {
+            // تحريك الثعبان
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+            snake.unshift(head);
+
+            // أكل الطعام
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreElement.innerText = score;
+                createFood();
+            } else {
+                snake.pop();
+            }
+        }
+
+        function createFood() {
+            food.x = Math.floor(Math.random() * tileCount);
+            food.y = Math.floor(Math.random() * tileCount);
+            // التأكد من عدم ظهور الطعام فوق الثعبان
+            snake.forEach(part => {
+                if (part.x === food.x && part.y === food.y) {
+                    createFood();
+                }
+            });
+        }
+
+        function checkGameOver() {
+            const head = snake[0];
+
+            // الاصطدام بالجدران
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                return true;
+            }
+
+            // الاصطدام بالجسم
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function draw() {
+            // مسح الشاشة
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // رسم الطعام
+            ctx.fillStyle = "#FF5722";
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+
+            // رسم الثعبان
+            snake.forEach((part, index) => {
+                ctx.fillStyle = index === 0 ? "#4CAF50" : "#8BC34A";
+                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 2, gridSize - 2);
+            });
+        }
+
+        // التحكم عبر لوحة المفاتيح
+        document.addEventListener("keydown", e => {
+            if (!isGameRunning) return;
+            
+            switch (e.key) {
+                case "ArrowUp":
+                    if (dy === 0) { dx = 0; dy = -1; }
+                    break;
+                case "ArrowDown":
+                    if (dy === 0) { dx = 0; dy = 1; }
+                    break;
+                case "ArrowRight":
+                    if (dx === 0) { dx = 1; dy = 0; }
+                    break;
+                case "ArrowLeft":
+                    if (dx === 0) { dx = -1; dy = 0; }
+                    break;
+            }
+        });
+
+        // بدء اللعبة تلقائياً عند التحميل
+        startGame();
+    </script>
 </body>
 </html>
