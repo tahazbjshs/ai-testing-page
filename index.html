@@ -2,204 +2,230 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة الثعبان الكلاسيكية - طه أحمد</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>لعبة الثعبان - طه أحمد</title>
     <style>
         * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+            user-select: none;
         }
         body {
+            margin: 0;
+            padding: 0;
             background-color: #1a1a1a;
             color: #ffffff;
-            font-family: 'Tahoma', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
             min-height: 100vh;
-        }
-        .container {
-            text-align: center;
-            background: #2a2a2a;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            overflow: hidden;
         }
         h1 {
-            margin-bottom: 10px;
-            font-size: 24px;
-            color: #4CAF50;
+            font-size: 1.2rem;
+            margin: 5px 0;
+            color: #00ffcc;
+            text-align: center;
         }
-        .score-board {
-            font-size: 20px;
-            margin-bottom: 15px;
-            font-weight: bold;
+        #score {
+            font-size: 1rem;
+            margin-bottom: 10px;
         }
         canvas {
-            border: 4px solid #4CAF50;
-            background-color: #000;
-            display: block;
-            margin: 0 auto 15px auto;
-            border-radius: 4px;
+            border: 3px solid #00ffcc;
+            background-color: #111;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+            max-width: 100%;
+            height: auto;
         }
-        .controls-hint {
-            font-size: 14px;
-            color: #aaa;
-            margin-top: 10px;
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 70px);
+            grid-template-rows: repeat(2, 60px);
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
         }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 5px;
+        .btn {
+            background-color: #333;
+            color: #00ffcc;
+            border: 2px solid #00ffcc;
+            font-size: 1.5rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
+            outline: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: background 0.1s;
         }
-        button:hover {
-            background-color: #45a049;
+        .btn:active {
+            background-color: #00ffcc;
+            color: #111;
         }
+        .btn-up { grid-column: 2; grid-row: 1; }
+        .btn-left { grid-column: 1; grid-row: 2; }
+        .btn-down { grid-column: 2; grid-row: 2; }
+        .btn-right { grid-column: 3; grid-row: 2; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>لعبة الثعبان الكلاسيكية</h1>
-        <div class="score-board">النقاط: <span id="score">0</span></div>
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
-        <button id="startBtn" onclick="startGame()">ابدأ / إعادة اللعب</button>
-        <div class="controls-hint">استخدم مفاتيح الأسهم في لوحة المفاتيح للتحكم</div>
+    <h1>لعبة الثعبان - طه أحمد</h1>
+    <div id="score">النقاط: 0</div>
+    
+    <canvas id="gameCanvas" width="300" height="300"></canvas>
+
+    <div class="controls">
+        <button class="btn btn-up" id="upBtn">⬆️</button>
+        <button class="btn btn-left" id="leftBtn">⬅️</button>
+        <button class="btn btn-down" id="downBtn">⬇️</button>
+        <button class="btn btn-right" id="rightBtn">➡️</button>
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-        const scoreElement = document.getElementById("score");
 
         const gridSize = 20;
         const tileCount = canvas.width / gridSize;
 
-        let snake = [];
+        let snake = [{ x: 10, y: 10 }];
         let food = { x: 5, y: 5 };
         let dx = 0;
         let dy = 0;
         let score = 0;
-        let gameInterval = null;
-        let isGameRunning = false;
+        let gameInterval;
+        let changingDirection = false;
+
+        function main() {
+            if (hasGameEnded()) {
+                alert("انتهت اللعبة! نقاطك: " + score);
+                resetGame();
+            }
+            changingDirection = false;
+            clearCanvas();
+            drawFood();
+            moveSnake();
+            drawSnake();
+        }
 
         function startGame() {
-            // إعادة ضبط اللعبة
-            snake = [
-                { x: 10, y: 10 },
-                { x: 9, y: 10 },
-                { x: 8, y: 10 }
-            ];
-            dx = 1;
-            dy = 0;
-            score = 0;
-            scoreElement.innerText = score;
-            createFood();
-            
-            if (gameInterval) clearInterval(gameInterval);
-            gameInterval = setInterval(gameLoop, 100);
-            isGameRunning = true;
+            gameInterval = setInterval(main, 120);
         }
 
-        function gameLoop() {
-            update();
-            if (checkGameOver()) {
-                clearInterval(gameInterval);
-                isGameRunning = false;
-                alert("انتهت اللعبة! مجموع نقاطك: " + score);
-                return;
-            }
-            draw();
+        function clearCanvas() {
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        function update() {
-            // تحريك الثعبان
+        function drawSnake() {
+            snake.forEach((part, index) => {
+                ctx.fillStyle = index === 0 ? "#00ffcc" : "#00aa88";
+                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 2, gridSize - 2);
+            });
+        }
+
+        function moveSnake() {
             const head = { x: snake[0].x + dx, y: snake[0].y + dy };
             snake.unshift(head);
 
-            // أكل الطعام
-            if (head.x === food.x && head.y === food.y) {
+            const hasEatenFood = snake[0].x === food.x && snake[0].y === food.y;
+            if (hasEatenFood) {
                 score += 10;
-                scoreElement.innerText = score;
-                createFood();
+                document.getElementById("score").innerText = "النقاط: " + score;
+                generateFood();
             } else {
                 snake.pop();
             }
         }
 
-        function createFood() {
+        function generateFood() {
             food.x = Math.floor(Math.random() * tileCount);
             food.y = Math.floor(Math.random() * tileCount);
-            // التأكد من عدم ظهور الطعام فوق الثعبان
             snake.forEach(part => {
-                if (part.x === food.x && part.y === food.y) {
-                    createFood();
-                }
+                const hasColided = part.x === food.x && part.y === food.y;
+                if (hasColided) generateFood();
             });
         }
 
-        function checkGameOver() {
-            const head = snake[0];
-
-            // الاصطدام بالجدران
-            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
-                return true;
-            }
-
-            // الاصطدام بالجسم
-            for (let i = 1; i < snake.length; i++) {
-                if (head.x === snake[i].x && head.y === snake[i].y) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        function draw() {
-            // مسح الشاشة
-            ctx.fillStyle = "#000000";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // رسم الطعام
-            ctx.fillStyle = "#FF5722";
+        function drawFood() {
+            ctx.fillStyle = "#ff3366";
             ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
-
-            // رسم الثعبان
-            snake.forEach((part, index) => {
-                ctx.fillStyle = index === 0 ? "#4CAF50" : "#8BC34A";
-                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 2, gridSize - 2);
-            });
         }
 
-        // التحكم عبر لوحة المفاتيح
-        document.addEventListener("keydown", e => {
-            if (!isGameRunning) return;
-            
-            switch (e.key) {
-                case "ArrowUp":
-                    if (dy === 0) { dx = 0; dy = -1; }
-                    break;
-                case "ArrowDown":
-                    if (dy === 0) { dx = 0; dy = 1; }
-                    break;
-                case "ArrowRight":
-                    if (dx === 0) { dx = 1; dy = 0; }
-                    break;
-                case "ArrowLeft":
-                    if (dx === 0) { dx = -1; dy = 0; }
-                    break;
+        function hasGameEnded() {
+            for (let i = 4; i < snake.length; i++) {
+                if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) return true;
             }
-        });
+            const hitLeftWall = snake[0].x < 0;
+            const hitRightWall = snake[0].x >= tileCount;
+            const hitToptWall = snake[0].y < 0;
+            const hitBottomWall = snake[0].y >= tileCount;
 
-        // بدء اللعبة تلقائياً عند التحميل
+            return hitLeftWall || hitRightWall || hitToptWall || hitBottomWall;
+        }
+
+        function resetGame() {
+            snake = [{ x: 10, y: 10 }];
+            score = 0;
+            document.getElementById("score").innerText = "النقاط: " + score;
+            dx = 0;
+            dy = 0;
+            generateFood();
+        }
+
+        function changeDirection(event) {
+            if (changingDirection) return;
+            const keyPressed = event.keyCode;
+
+            const goingUp = dy === -1;
+            const goingDown = dy === 1;
+            const goingRight = dx === 1;
+            const goingLeft = dx === -1;
+
+            if (keyPressed === 37 && !goingRight) { dx = -1; dy = 0; changingDirection = true; }
+            if (keyPressed === 38 && !goingDown) { dx = 0; dy = -1; changingDirection = true; }
+            if (keyPressed === 39 && !goingLeft) { dx = 1; dy = 0; changingDirection = true; }
+            if (keyPressed === 40 && !goingUp) { dx = 0; dy = 1; changingDirection = true; }
+        }
+
+        document.getElementById("upBtn").addEventListener("click", () => { if (dy === 0) { dx = 0; dy = -1; } });
+        document.getElementById("downBtn").addEventListener("click", () => { if (dy === 0) { dx = 0; dy = 1; } });
+        document.getElementById("leftBtn").addEventListener("click", () => { if (dx === 0) { dx = -1; dy = 0; } });
+        document.getElementById("rightBtn").addEventListener("click", () => { if (dx === 0) { dx = 1; dy = 0; } });
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        canvas.addEventListener("touchstart", function(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener("touchend", function(e) {
+            if (!touchStartX || !touchStartY) return;
+            let touchEndX = e.changedTouches[0].clientX;
+            let touchEndY = e.changedTouches[0].clientY;
+
+            let diffX = touchEndX - touchStartX;
+            let diffY = touchEndY - touchStartY;
+
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                if (diffX > 0 && dx === 0) { dx = 1; dy = 0; }
+                else if (diffX < 0 && dx === 0) { dx = -1; dy = 0; }
+            } else {
+                if (diffY > 0 && dy === 0) { dx = 0; dy = 1; }
+                else if (diffY < 0 && dy === 0) { dx = 0; dy = -1; }
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener("keydown", changeDirection);
+        generateFood();
         startGame();
     </script>
 </body>
